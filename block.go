@@ -258,6 +258,195 @@ func (c *Client) GetBlock(ctx context.Context, blockID string) (*Block, error) {
 	return &block, nil
 }
 
+// GetBlockWithChildren retrieves a block by ID and populates its children
+// This is particularly useful for table blocks which need their table rows fetched
+func (c *Client) GetBlockWithChildren(ctx context.Context, blockID string) (*Block, error) {
+	block, err := c.GetBlock(ctx, blockID)
+	if err != nil {
+		return nil, err
+	}
+
+	// For table blocks, fetch the table rows as children
+	if block.Type == BlockTypeTable && block.Table != nil {
+		children, err := c.GetAllBlockChildren(ctx, blockID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch table children: %w", err)
+		}
+		block.Table.Children = children
+	}
+
+	return block, nil
+}
+
+// GetAllBlockChildren retrieves all children of a block, handling pagination automatically
+func (c *Client) GetAllBlockChildren(ctx context.Context, blockID string) ([]Block, error) {
+	var allChildren []Block
+	startCursor := ""
+
+	for {
+		resp, err := c.GetBlockChildren(ctx, blockID, startCursor, 100)
+		if err != nil {
+			return nil, err
+		}
+
+		allChildren = append(allChildren, resp.Results...)
+
+		if !resp.HasMore {
+			break
+		}
+		startCursor = resp.NextCursor
+	}
+
+	return allChildren, nil
+}
+
+// GetBlockChildrenWithTables retrieves children of a block and populates table children
+// This method automatically fetches table row children for any table blocks found
+func (c *Client) GetBlockChildrenWithTables(ctx context.Context, blockID string) ([]Block, error) {
+	blocks, err := c.GetAllBlockChildren(ctx, blockID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Process each block and populate table children if needed
+	for i := range blocks {
+		if err := c.populateTableChildren(ctx, &blocks[i]); err != nil {
+			return nil, fmt.Errorf("failed to populate table children: %w", err)
+		}
+	}
+
+	return blocks, nil
+}
+
+// populateTableChildren recursively populates table children for table blocks
+func (c *Client) populateTableChildren(ctx context.Context, block *Block) error {
+	if block.Type == BlockTypeTable && block.Table != nil {
+		children, err := c.GetAllBlockChildren(ctx, block.ID)
+		if err != nil {
+			return err
+		}
+		block.Table.Children = children
+	}
+
+	// Recursively process children for blocks that can have children
+	switch block.Type {
+	case BlockTypeParagraph:
+		if block.Paragraph != nil {
+			for i := range block.Paragraph.Children {
+				if err := c.populateTableChildren(ctx, &block.Paragraph.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeHeading1:
+		if block.Heading1 != nil {
+			for i := range block.Heading1.Children {
+				if err := c.populateTableChildren(ctx, &block.Heading1.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeHeading2:
+		if block.Heading2 != nil {
+			for i := range block.Heading2.Children {
+				if err := c.populateTableChildren(ctx, &block.Heading2.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeHeading3:
+		if block.Heading3 != nil {
+			for i := range block.Heading3.Children {
+				if err := c.populateTableChildren(ctx, &block.Heading3.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeBulletedListItem:
+		if block.BulletedListItem != nil {
+			for i := range block.BulletedListItem.Children {
+				if err := c.populateTableChildren(ctx, &block.BulletedListItem.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeNumberedListItem:
+		if block.NumberedListItem != nil {
+			for i := range block.NumberedListItem.Children {
+				if err := c.populateTableChildren(ctx, &block.NumberedListItem.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeQuote:
+		if block.Quote != nil {
+			for i := range block.Quote.Children {
+				if err := c.populateTableChildren(ctx, &block.Quote.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeToDo:
+		if block.ToDo != nil {
+			for i := range block.ToDo.Children {
+				if err := c.populateTableChildren(ctx, &block.ToDo.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeToggle:
+		if block.Toggle != nil {
+			for i := range block.Toggle.Children {
+				if err := c.populateTableChildren(ctx, &block.Toggle.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeCallout:
+		if block.Callout != nil {
+			for i := range block.Callout.Children {
+				if err := c.populateTableChildren(ctx, &block.Callout.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeColumnList:
+		if block.ColumnList != nil {
+			for i := range block.ColumnList.Children {
+				if err := c.populateTableChildren(ctx, &block.ColumnList.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeColumn:
+		if block.Column != nil {
+			for i := range block.Column.Children {
+				if err := c.populateTableChildren(ctx, &block.Column.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeSynced:
+		if block.Synced != nil {
+			for i := range block.Synced.Children {
+				if err := c.populateTableChildren(ctx, &block.Synced.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	case BlockTypeTemplate:
+		if block.Template != nil {
+			for i := range block.Template.Children {
+				if err := c.populateTableChildren(ctx, &block.Template.Children[i]); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // UpdateBlock updates an existing block
 func (c *Client) UpdateBlock(ctx context.Context, blockID string, req *UpdateBlockRequest) (*Block, error) {
 	resp, err := c.makeRequest(ctx, "PATCH", "/blocks/"+blockID, req)

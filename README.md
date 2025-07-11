@@ -10,6 +10,16 @@ A comprehensive Go client library for the Notion API, inspired by the official [
 - 🧪 **Well Tested**: Comprehensive test suite
 - 📚 **Rich Documentation**: Extensive examples and documentation
 - 🛠️ **Helper Functions**: Convenient utilities for creating common objects
+- 📊 **Table Support**: Automatic handling of table blocks and their row children
+
+## Important Notes
+
+### Table Blocks
+Tables in Notion's API have a unique structure where table rows are children of table blocks and need to be fetched separately. This library provides convenient methods to handle this automatically:
+
+- Use `GetBlockWithChildren()` to fetch a specific table block with its rows populated
+- Use `GetBlockChildrenWithTables()` to fetch all children and automatically populate any table children
+- Without these methods, table blocks would appear empty because their children are not automatically fetched
 
 ## Installation
 
@@ -176,6 +186,40 @@ block, err := client.UpdateBlock(ctx, "block-id", &notion.UpdateBlockRequest{
 
 // Delete a block
 block, err := client.DeleteBlock(ctx, "block-id")
+
+// Get block children with automatic table population
+// This method automatically fetches table row children for any table blocks
+blocks, err := client.GetBlockChildrenWithTables(ctx, "page-id")
+
+// Create a table with rows
+table := notion.NewTableBlock(3, true, false) // 3 columns, has header, no row header
+rows := []*notion.Block{
+    notion.NewTableRowBlock([][]notion.RichText{
+        {notion.NewText("Header 1")},
+        {notion.NewText("Header 2")},
+        {notion.NewText("Header 3")},
+    }),
+    notion.NewTableRowBlock([][]notion.RichText{
+        {notion.NewText("Row 1, Col 1")},
+        {notion.NewText("Row 1, Col 2")},
+        {notion.NewText("Row 1, Col 3")},
+    }),
+    notion.NewTableRowBlock([][]notion.RichText{
+        {notion.NewText("Row 2, Col 1")},
+        {notion.NewText("Row 2, Col 2")},
+        {notion.NewText("Row 2, Col 3")},
+    }),
+}
+
+// First, create the table block
+tableResp, err := client.AppendBlockChildren(ctx, "page-id", &notion.AppendBlockChildrenRequest{
+    Children: []notion.Block{*table},
+})
+
+// Then add the table rows to the table
+_, err = client.AppendBlockChildren(ctx, tableResp.Results[0].ID, &notion.AppendBlockChildrenRequest{
+    Children: []notion.Block{*rows[0], *rows[1], *rows[2]},
+})
 ```
 
 ### Users

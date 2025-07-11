@@ -151,6 +151,29 @@ func NewDividerBlock() *Block {
 	}
 }
 
+// NewTableBlock creates a new table block
+func NewTableBlock(tableWidth int, hasColumnHeader, hasRowHeader bool) *Block {
+	return &Block{
+		Type: "table",
+		Table: &TableBlock{
+			TableWidth:      tableWidth,
+			HasColumnHeader: hasColumnHeader,
+			HasRowHeader:    hasRowHeader,
+			Children:        []Block{},
+		},
+	}
+}
+
+// NewTableRowBlock creates a new table row block
+func NewTableRowBlock(cells [][]RichText) *Block {
+	return &Block{
+		Type: "table_row",
+		TableRow: &TableRowBlock{
+			Cells: cells,
+		},
+	}
+}
+
 // NewTitleProperty creates a new title property
 func NewTitleProperty(title []RichText) PageProperty {
 	return PageProperty{

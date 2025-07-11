@@ -53,7 +53,52 @@ func TestNewParagraphBlock(t *testing.T) {
 	}
 
 	if block.Paragraph.RichText[0].PlainText != "This is a paragraph" {
-		t.Errorf("Expected 'This is a paragraph', got '%s'", block.Paragraph.RichText[0].PlainText)
+		t.Errorf("Expected plain text 'This is a paragraph', got '%s'", block.Paragraph.RichText[0].PlainText)
+	}
+}
+
+func TestNewTableBlock(t *testing.T) {
+	block := NewTableBlock(3, true, false)
+
+	if block.Type != "table" {
+		t.Errorf("Expected type 'table', got '%s'", block.Type)
+	}
+
+	if block.Table.TableWidth != 3 {
+		t.Errorf("Expected table width 3, got %d", block.Table.TableWidth)
+	}
+
+	if !block.Table.HasColumnHeader {
+		t.Errorf("Expected has column header to be true")
+	}
+
+	if block.Table.HasRowHeader {
+		t.Errorf("Expected has row header to be false")
+	}
+
+	if len(block.Table.Children) != 0 {
+		t.Errorf("Expected empty children, got %d", len(block.Table.Children))
+	}
+}
+
+func TestNewTableRowBlock(t *testing.T) {
+	cells := [][]RichText{
+		{NewText("Cell 1")},
+		{NewText("Cell 2")},
+		{NewText("Cell 3")},
+	}
+	block := NewTableRowBlock(cells)
+
+	if block.Type != "table_row" {
+		t.Errorf("Expected type 'table_row', got '%s'", block.Type)
+	}
+
+	if len(block.TableRow.Cells) != 3 {
+		t.Errorf("Expected 3 cells, got %d", len(block.TableRow.Cells))
+	}
+
+	if block.TableRow.Cells[0][0].PlainText != "Cell 1" {
+		t.Errorf("Expected first cell to be 'Cell 1', got '%s'", block.TableRow.Cells[0][0].PlainText)
 	}
 }
 
